@@ -1,0 +1,39 @@
+version: '3.9'
+
+services:
+  postgres-db:
+    image: postgres:17
+    ports:
+      - "6001:5432"
+    environment:
+      POSTGRES_PASSWORD: luffy69
+      POSTGRES_USER: postgres
+      POSTGRES_DB: deepchat-db
+      GDATA: /var/lib/postgresql/data
+    volumes:
+      - D:/development/doker_volume/deepchat-db:/var/lib/postgresql/data
+    networks:
+      - deepchat-net
+  pgvector-db:
+    image: ankane/pgvector:v0.5.0
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: luffy69
+      POSTGRES_DB: deepchat-vector-db
+      PGPASSWORD: luffy69
+      GDATA: /var/lib/postgresql/data
+    logging:
+      options:
+        max-size: 10m
+        max-file: "3"
+    ports:
+      - '6002:5432'
+    volumes:
+      - D:/development/doker_volume/deepchat-vector-db:/var/lib/postgresql/data
+    networks:
+      - deepchat-net
+
+networks:
+  deepchat-net:
+    driver: bridge
