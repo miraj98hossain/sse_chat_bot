@@ -6,6 +6,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.List;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -24,4 +26,6 @@ public class User {
     private String password;
     @Column(unique = true, nullable = false)
     private String phone;
+    @OneToMany(mappedBy = "createdBy", fetch = FetchType.LAZY)
+    private List<Conversation> conversations;
 }
