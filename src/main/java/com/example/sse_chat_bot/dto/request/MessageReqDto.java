@@ -10,7 +10,7 @@ import lombok.Setter;
 @AllArgsConstructor
 @NoArgsConstructor
 public class MessageReqDto {
-    private String Content;
+    private String content;
     private String senderType;
     private Long conversationId;
 }
