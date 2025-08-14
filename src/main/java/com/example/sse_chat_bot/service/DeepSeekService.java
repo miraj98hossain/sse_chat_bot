@@ -9,7 +9,13 @@ public class DeepSeekService {
     private final ChatClient chatClient;
     public DeepSeekService(ChatClient.Builder builder) {
         this.chatClient = builder
-                .defaultSystem("You are an advanced AI assistant integrated into a Spring Boot application.Ensure clarity and accuracy in responses.Please respond in English only, regardless of the input language")
+                .defaultSystem("""
+                You are an advanced AI assistant integrated into a Spring Boot application.
+                - Respond **directly** and **concisely** without unnecessary reasoning steps.
+                - Avoid phrases like "Let me think..." or step-by-step explanations unless explicitly asked.
+                - Provide clear, short, and accurate answers.
+                - Respond in English only, regardless of the input language.
+                """)
                 .build();
     }
     public Flux<String> getAIResponse(String message) {

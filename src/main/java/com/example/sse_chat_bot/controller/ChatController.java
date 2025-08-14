@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import reactor.core.publisher.Flux;
 
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -56,33 +57,36 @@ public class ChatController {
     @PostMapping("/send")
     public void sendMessage(@RequestBody MessageReqDto message) {
         AppUserDetails loggedInUser = LoginCache.getInstance().getCurrentLoggenInUser();
-
+        message.setSenderType(SenderTypeMapper.mapToString(SenderType.USER));
         // Save user's original message
         var userMessage = messageService.createMessage(message);
         sendToUser(loggedInUser.getUsername(), userMessage);
 
         // Call AI service (streaming)
         Flux<String> serverResponseFlux = deepSeekService.getAIResponse(message.getContent());
-
+        // StringBuilder to accumulate the chunks
+        StringBuilder fullResponse = new StringBuilder();
         // Process the stream
         serverResponseFlux.subscribe(chunk -> {
+                    fullResponse.append(chunk);
                     // For each new chunk from the AI
-                    MessageReqDto serverMessage = new MessageReqDto();
+                    MessageResDto serverMessage = new MessageResDto();
                     serverMessage.setConversationId(message.getConversationId());
                     serverMessage.setContent(chunk); // this is just the current piece
                     serverMessage.setSenderType(SenderTypeMapper.mapToString(SenderType.SERVER));
-                    var serverRes = messageService.createMessage(serverMessage);
-                    sendToUser(loggedInUser.getUsername(), serverRes); // push to frontend
+                    serverMessage.setCreatedAt(OffsetDateTime.now());
+                    sendToUser(loggedInUser.getUsername(), serverMessage); // push to frontend
                 },
                 error -> {
-                    MessageReqDto serverMessage = new MessageReqDto();
-                    serverMessage.setConversationId(message.getConversationId());
-                    serverMessage.setContent(error.getMessage());
-                    serverMessage.setSenderType(SenderTypeMapper.mapToString(SenderType.SERVER));
-                    var serverRes = messageService.createMessage(serverMessage);
-                    sendToUser(loggedInUser.getUsername(), serverRes);
+
+                    System.out.println("AI Error"+error.toString());
                 },
                 () -> {
+                    MessageReqDto serverMessage = new MessageReqDto();
+                    serverMessage.setConversationId(message.getConversationId());
+                    serverMessage.setContent(fullResponse.toString());
+                    serverMessage.setSenderType(SenderTypeMapper.mapToString(SenderType.SERVER));
+                    var serverRes = messageService.createMessage(serverMessage);
                     // When the AI finishes streaming
                     System.out.println("AI stream completed");
                 });

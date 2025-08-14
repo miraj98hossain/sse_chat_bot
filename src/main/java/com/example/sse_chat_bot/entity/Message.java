@@ -23,7 +23,7 @@ public class Message {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @Column(nullable = false)
+    @Column(nullable = false,columnDefinition = "varchar(100000)")
     private String content;
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, columnDefinition = "varchar(10)")
