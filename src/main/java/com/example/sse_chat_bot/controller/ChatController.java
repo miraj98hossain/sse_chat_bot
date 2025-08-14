@@ -5,12 +5,14 @@ import com.example.sse_chat_bot.dto.response.MessageResDto;
 import com.example.sse_chat_bot.entity.AppUserDetails;
 import com.example.sse_chat_bot.mapper.SenderTypeMapper;
 import com.example.sse_chat_bot.service.ConversationService;
+import com.example.sse_chat_bot.service.DeepSeekService;
 import com.example.sse_chat_bot.service.MessageService;
 import com.example.sse_chat_bot.utils.LoginCache;
 import com.example.sse_chat_bot.utils.SenderType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import reactor.core.publisher.Flux;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,6 +28,8 @@ public class ChatController {
     private MessageService messageService;
     @Autowired
     private ConversationService conversationService;
+    @Autowired
+    private DeepSeekService deepSeekService;
 
     @GetMapping("/stream")
     public SseEmitter stream(@RequestParam(required = false) Long conversationId) {
@@ -52,20 +56,38 @@ public class ChatController {
     @PostMapping("/send")
     public void sendMessage(@RequestBody MessageReqDto message) {
         AppUserDetails loggedInUser = LoginCache.getInstance().getCurrentLoggenInUser();
-        // Save user message
+
+        // Save user's original message
         var userMessage = messageService.createMessage(message);
-        // Simulate server response
-        String serverResponse = "Server: Hello " + loggedInUser.getUsername() + ", you said: " + message.getContent();
-        MessageReqDto serverMessage = new MessageReqDto();
-        serverMessage.setConversationId(message.getConversationId());
-        serverMessage.setContent(serverResponse);
-        serverMessage.setSenderType(SenderTypeMapper.mapToString(SenderType.SERVER));
-        var serverRes = messageService.createMessage(serverMessage);
-
         sendToUser(loggedInUser.getUsername(), userMessage);
-        sendToUser(loggedInUser.getUsername(), serverRes);
 
+        // Call AI service (streaming)
+        Flux<String> serverResponseFlux = deepSeekService.getAIResponse(message.getContent());
+
+        // Process the stream
+        serverResponseFlux.subscribe(chunk -> {
+                    // For each new chunk from the AI
+                    MessageReqDto serverMessage = new MessageReqDto();
+                    serverMessage.setConversationId(message.getConversationId());
+                    serverMessage.setContent(chunk); // this is just the current piece
+                    serverMessage.setSenderType(SenderTypeMapper.mapToString(SenderType.SERVER));
+                    var serverRes = messageService.createMessage(serverMessage);
+                    sendToUser(loggedInUser.getUsername(), serverRes); // push to frontend
+                },
+                error -> {
+                    MessageReqDto serverMessage = new MessageReqDto();
+                    serverMessage.setConversationId(message.getConversationId());
+                    serverMessage.setContent(error.getMessage());
+                    serverMessage.setSenderType(SenderTypeMapper.mapToString(SenderType.SERVER));
+                    var serverRes = messageService.createMessage(serverMessage);
+                    sendToUser(loggedInUser.getUsername(), serverRes);
+                },
+                () -> {
+                    // When the AI finishes streaming
+                    System.out.println("AI stream completed");
+                });
     }
+
 
     private void sendToUser(String userId, MessageResDto message) {
         SseEmitter emitter = emitters.get(userId);
