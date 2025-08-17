@@ -45,22 +45,22 @@ public class ChatController {
         SseEmitter emitter = new SseEmitter(0L); // 0 means no timeout
         emitters.put(username, emitter);
 
-        try {
-            // Ensure conversation exists or create new one
-            if (conversationId == null) {
-                var conv = conversationService.createConversation(loggedInUser.getUser().getId());
-                conversationId = conv.getId();
-
-            } else {
-                // Load previous conversation messages
-                List<MessageResDto> prevMessages = messageService.getMessages(conversationId);
-                for (MessageResDto msg : prevMessages) {
-                    sendToUser(username, msg);
-                }
-            }
-        } catch (EntityNotFoundException e) {
-            log.warn("Conversation not found for user {} with id {}", username, conversationId, e);
-        }
+//        try {
+//            // Ensure conversation exists or create new one
+//            if (conversationId == null) {
+//                var conv = conversationService.createConversation(loggedInUser.getUser().getId());
+//                conversationId = conv.getId();
+//
+//            } else {
+//                // Load previous conversation messages
+//                List<MessageResDto> prevMessages = messageService.getMessages(conversationId);
+//                for (MessageResDto msg : prevMessages) {
+//                    sendToUser(username, msg);
+//                }
+//            }
+//        } catch (EntityNotFoundException e) {
+//            log.warn("Conversation not found for user {} with id {}", username, conversationId, e);
+//        }
 
         // Handle cleanup on completion / timeout / error
         emitter.onCompletion(() -> {
